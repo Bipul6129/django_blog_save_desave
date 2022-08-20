@@ -1,0 +1,29 @@
+{% extends "landing/base.html" %}
+{% block content %}
+
+<h1>Upload Blogs</h1>
+
+
+<form method="POST" enctype="multipart/form-data">
+    {% csrf_token %}
+    <table>
+        {% for field in form %}
+        <tr>
+            <td>{{field.label_tag}}</td>
+            <td>{{field}}</td>
+            
+        {% for error in field.errors %}
+        <td>
+        <small style="color:red">{{error}}</small>
+        </td>
+        {% endfor %}
+        <tr>
+        
+        {% endfor %}
+        </table>
+    
+    <button class="btn btn-outline-info" type="submit">Upload</button>
+</form>
+
+
+{% endblock %}

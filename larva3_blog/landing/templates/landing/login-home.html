@@ -1,0 +1,41 @@
+{% extends "landing/base.html" %}
+{% block content %}
+
+<h1>Home </h1>
+<div class="card-columns">
+{% for blog in posts %}
+
+<div class="card" style="width: 18rem;">
+    <img class="card-img-top" src="{{ blog.image.url }}" alt="Card image cap">
+    <div class="card-body">
+      <h5 class="card-title"><a href="{% url 'blog-detail' blog.id %}">{{blog.title}}</a></h5>
+      <h5>{{blog.author.username}}</h5>
+      <p class="card-text">{{blog.content|slice:":50"}}.......</p>
+      
+      <a href="{% url 'save-blog' %}?id={{ blog.id }}" class="btn btn-primary">Save</a>
+
+    </div>
+</div>
+
+{% endfor %}
+</div>
+
+<div class="card-columns">
+  {% for blog in saved %}
+  
+  <div class="card" style="width: 18rem;">
+      <img class="card-img-top" src="{{ blog.blog.image.url }}" alt="Card image cap">
+      <div class="card-body">
+        <h5 class="card-title"><a href="{% url 'blog-detail' blog.blog.id %}">{{blog.blog.title}}</a></h5>
+        <h5>{{blog.blog.author.username}}</h5>
+        <p class="card-text">{{blog.blog.content|slice:":50"}}.......</p>
+        
+        <a href="{% url 'remove-blog' %}?id={{ blog.blog.id }}" class="btn btn-danger">Remove</a>
+    
+      </div>
+  </div>
+  
+  {% endfor %}
+  </div>
+
+{% endblock %}
