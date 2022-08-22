@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     'landing.apps.LandingConfig',
     'account.apps.AccountConfig',
     'blog.apps.BlogConfig',
+    'django_filters',
 ]
 
 MIDDLEWARE = [

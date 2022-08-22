@@ -1,90 +1,96 @@
 from django.shortcuts import render,redirect
-from django.http import HttpResponse
-from django.contrib.auth.decorators import login_required
-from .forms import BlogUpload,BlogUpdate
-from django.contrib.auth.models import User
-from account.models import Account
-from .models import Blogs
-from larva_3.settings import AUTH_USER_MODEL as CustomUser
+from django.contrib.auth.mixins import LoginRequiredMixin,UserPassesTestMixin
+from .models import Post_blog,User_Blog
+from landing.filters import BlogFilter
+
+from django.views.generic import ListView,DetailView,CreateView,UpdateView,DeleteView
 # Create your views here.
 
-@login_required
-def upload_blog(request):
-    user=request.user
-    if request.method== 'POST':
-        blog_form=BlogUpload(request.POST,request.FILES)
-        if blog_form.is_valid():
-            obj=blog_form.save(commit=False)
-            author = Account.objects.filter(email=user.email).first()
-            obj.author=author
-            obj.save()
-            return redirect('home')
-    else:            
-        blog_form = BlogUpload(request.POST)
-    context = {
-        'blog_form': blog_form
-    }
-    return render(request,'blog/upload_blog.html',context)
+
+class BlogCreateView(LoginRequiredMixin,CreateView):
+    model=Post_blog
+    template_name = 'blog/post_form.html'
+    fields = ['title','image','content']
+
+    def form_valid(self,form):
+        form.instance.author = self.request.user
+        return super().form_valid(form)
 
 
-@login_required
-def manage_blog(request):
-    user=request.user
-    user_blogs=Blogs.objects.filter(author=user.id)
-    context = {
-        'user_blogs':user_blogs
-    }
-    return render(request,'blog/manage_blog.html',context)
+class BlogListView(ListView):
+    model=Post_blog
+    template_name = 'landing/login-home.html'
+    context_object_name='posts'
+    ordering = ['-date']
 
+class BlogDetailView(DetailView):
+    model=Post_blog
+    template_name='blog/detail-view.html'
 
-@login_required
-def update_blog(request):
-    user=request.user
-    if request.method == 'POST':
+def saveblog(request):
+    if request.method=='GET':
+        user=request.user
         blog_id=request.GET.get('id')
-        get_blog=Blogs.objects.filter(id=blog_id).first() 
-        blog_form=BlogUpdate(request.POST,request.FILES,instance=get_blog)
-        if blog_form.is_valid():
-            blog_form.save()
-            return redirect('manage_blog')
+        blog=Post_blog.objects.get(pk=blog_id)
+        if blog.author == user:
+            return redirect('login-home')
         else:
-        
-            return render(request,'blog/update_blog.html',{'blog_form':BlogUpdate(instance=get_blog)})
-        
-    elif request.GET.get('id'):
-        blog_id=request.GET.get('id')
-        get_blog=Blogs.objects.filter(id=blog_id).first() 
-
-        if(get_blog):
-            if get_blog.author != user:
-                return redirect('manage_blog')
+            if blog:
+                save = User_Blog(blog=blog,author=user)
+                save.save()
             else:
-                blog_form=BlogUpdate(instance=get_blog)
-                context = {
-                    'blog_form':blog_form
-                }
-                return render(request,'blog/update_blog.html',context)
-        else:
-            return redirect('home')
+                return redirect('login-home')
 
-    else:
-        return redirect('home')
-        
+    return redirect('login-home')
 
-@login_required
-def delete_blog(request):
-    user=request.user
-    if request.GET.get('id'):
+def removeblog(request):
+    if request.method=='GET':
+        user=request.user
         blog_id=request.GET.get('id')
-        get_blog = Blogs.objects.filter(id=blog_id).first()
+        blog_d=Post_blog.objects.get(id=blog_id)
+        blog=User_Blog.objects.get(author=user,blog=blog_d)
+        blog.delete()
+        return redirect('login-home')
+    return redirect('login-home')
 
-        if get_blog:
-            if get_blog.author !=user:
-                return redirect('manage_blog')
-            else:
-                get_blog.delete()
-                return redirect('manage_blog')
-        else:
-            return redirect('manage_blog')
-    else:
-        return redirect('manage_blog')
+
+
+def loginhome(request):
+    user=request.user
+    user_saved=user.user_blog_set.filter(author=user)
+    exclude_list=[]
+
+    for saved in user_saved:
+        exclude_list.append(saved.blog.id)
+    selected = Post_blog.objects.exclude(id__in=exclude_list)
+                
+    if request.GET.get('searchkeyword'):
+        search_key=request.GET.get('searchkeyword')
+        selected=selected.filter(title__icontains=search_key)
+        #filter= BlogFilter(request.GET,queryset=selected)
+        #selected=filter.qs
+            
+    context={
+        'posts': selected,
+        'saved':user_saved,
+        'title':'Blog-Home',
+        
+    }
+    return render(request,'landing/login-home.html',context)
+
+class BlogUpdateView(LoginRequiredMixin,UserPassesTestMixin,UpdateView):
+    model = Post_blog
+    fields = ['title','image','content']
+    template_name = 'blog/blog-update.html'
+
+    def form_valid(self,form):
+        form.instance.author = self.request.user
+        return super().form_valid(form)
+
+    def test_func(self):
+        post = self.get_object()
+        if self.request.user == post.author:
+            return True
+        return False
+
+
